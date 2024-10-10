@@ -19,6 +19,7 @@ module Dependabot
       class RefreshSecurityUpdatePullRequest
         extend T::Sig
         include SecurityUpdateHelpers
+        include PullRequestHelpers
 
         sig { params(job: Job).returns(T::Boolean) }
         def self.applies_to?(job:)
@@ -52,6 +53,9 @@ module Dependabot
         def perform
           Dependabot.logger.info("Starting update job for #{job.source.repo}")
           Dependabot.logger.info("Checking and updating security pull requests...")
+
+          # Raise an error if the package manager version is unsupported
+          dependency_snapshot.package_manager&.raise_if_unsupported!
 
           # Retrieve the list of initial notices from dependency snapshot
           @notices = dependency_snapshot.notices
@@ -158,8 +162,13 @@ module Dependabot
             dependency_files: dependency_snapshot.dependency_files,
             updated_dependencies: updated_deps,
             change_source: checker.dependency,
+            # Sending notices to the pr message builder to be used in the PR message if show_in_pr is true
             notices: @notices
           )
+
+          # Send warning alerts to the API if any warning notices are present.
+          # Note that only notices with notice.show_alert set to true will be sent.
+          record_warning_notices(notices) if notices.any?
 
           # NOTE: Gradle, Maven and Nuget dependency names can be case-insensitive
           # and the dependency name in the security advisory often doesn't match

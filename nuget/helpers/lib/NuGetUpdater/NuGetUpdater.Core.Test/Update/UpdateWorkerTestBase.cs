@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 using NuGetUpdater.Core.Updater;
 
 using Xunit;
@@ -137,10 +135,7 @@ public abstract class UpdateWorkerTestBase : TestBase
             // run update
             var worker = new UpdaterWorker(new Logger(verbose: true));
             var projectPath = placeFilesInSrc ? $"src/{projectFilePath}" : projectFilePath;
-            var updateResultFile = Path.Combine(temporaryDirectory, "update-result.json");
-            await worker.RunAsync(temporaryDirectory, projectPath, dependencyName, oldVersion, newVersion, isTransitive, updateResultFile);
-            var actualResultContents = await File.ReadAllTextAsync(updateResultFile);
-            var actualResult = JsonSerializer.Deserialize<UpdateOperationResult>(actualResultContents, UpdaterWorker.SerializerOptions);
+            var actualResult = await worker.RunWithErrorHandlingAsync(temporaryDirectory, projectPath, dependencyName, oldVersion, newVersion, isTransitive);
             if (expectedResult is { })
             {
                 ValidateUpdateOperationResult(expectedResult, actualResult!);
@@ -159,7 +154,7 @@ public abstract class UpdateWorkerTestBase : TestBase
     protected static void ValidateUpdateOperationResult(UpdateOperationResult expectedResult, UpdateOperationResult actualResult)
     {
         Assert.Equal(expectedResult.ErrorType, actualResult.ErrorType);
-        Assert.Equal(expectedResult.ErrorDetails, actualResult.ErrorDetails);
+        Assert.Equivalent(expectedResult.ErrorDetails, actualResult.ErrorDetails);
     }
 
     protected static Task TestNoChangeforSolution(
@@ -257,14 +252,6 @@ public abstract class UpdateWorkerTestBase : TestBase
                 package.WriteToDirectory(localFeedPath);
             }
 
-            // override various nuget locations
-            foreach (var envName in new[] { "NUGET_PACKAGES", "NUGET_HTTP_CACHE_PATH", "NUGET_SCRATCH", "NUGET_PLUGINS_CACHE_PATH" })
-            {
-                string dir = Path.Join(temporaryDirectory, envName);
-                Directory.CreateDirectory(dir);
-                Environment.SetEnvironmentVariable(envName, dir);
-            }
-
             // ensure only the test feed is used
             string relativeLocalFeedPath = Path.GetRelativePath(temporaryDirectory, localFeedPath);
             await File.WriteAllTextAsync(Path.Join(temporaryDirectory, "NuGet.Config"), $"""
@@ -277,6 +264,14 @@ public abstract class UpdateWorkerTestBase : TestBase
                 </configuration>
                 """
             );
+        }
+
+        // override various nuget locations
+        foreach (var envName in new[] { "NUGET_PACKAGES", "NUGET_HTTP_CACHE_PATH", "NUGET_SCRATCH", "NUGET_PLUGINS_CACHE_PATH" })
+        {
+            string dir = Path.Join(temporaryDirectory, envName);
+            Directory.CreateDirectory(dir);
+            Environment.SetEnvironmentVariable(envName, dir);
         }
     }
 

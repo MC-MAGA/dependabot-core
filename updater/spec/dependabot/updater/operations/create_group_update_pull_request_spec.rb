@@ -110,6 +110,19 @@ RSpec.describe Dependabot::Updater::Operations::CreateGroupUpdatePullRequest do
     class_double(Dependabot::Bundler::UpdateChecker, new: stub_update_checker)
   end
 
+  let(:warning_deprecation_notice) do
+    Dependabot::Notice.new(
+      mode: "WARN",
+      type: "bundler_deprecated_warn",
+      package_manager_name: "bundler",
+      title: "Package manager deprecation notice",
+      description: "Dependabot will stop supporting `bundler v1`!\n" \
+                   "\n\nPlease upgrade to one of the following versions: `v2`, or `v3`.\n",
+      show_in_pr: true,
+      show_alert: true
+    )
+  end
+
   let(:stub_dependency_change) do
     instance_double(
       Dependabot::DependencyChange,
@@ -117,22 +130,12 @@ RSpec.describe Dependabot::Updater::Operations::CreateGroupUpdatePullRequest do
       should_replace_existing_pr?: false,
       grouped_update?: false,
       matches_existing_pr?: false,
-      notices: [
-        Dependabot::Notice.new(
-          mode: "WARN",
-          type: "bundler_deprecated_warn",
-          package_manager_name: "bundler",
-          title: "Package manager deprecation notice",
-          description: "Dependabot will stop supporting `bundler v1`!\n" \
-                       "\n\nPlease upgrade to one of the following versions: `v2`, or `v3`.\n",
-          show_in_pr: true,
-          show_alert: true
-        ).to_hash
-      ]
+      notices: [warning_deprecation_notice]
     )
   end
 
   before do
+    allow(Dependabot::Experiments).to receive(:enabled?).with(:bundler_v1_unsupported_error).and_return(false)
     allow(Dependabot::Experiments).to receive(:enabled?).with(:add_deprecation_warn_to_pr_message).and_return(true)
 
     allow(Dependabot::UpdateCheckers).to receive(:for_package_manager).and_return(stub_update_checker_class)
@@ -159,18 +162,9 @@ RSpec.describe Dependabot::Updater::Operations::CreateGroupUpdatePullRequest do
       context "when pull request does not already exist" do
         it "creates a pull request with deprecation notice" do
           expect(create_group_update_pull_request).to receive(:perform)
-          expect(stub_dependency_change.notices).to include(
-            {
-              mode: "WARN",
-              type: "bundler_deprecated_warn",
-              package_manager_name: "bundler",
-              title: "Package manager deprecation notice",
-              description: "Dependabot will stop supporting `bundler v1`!\n" \
-                           "\n\nPlease upgrade to one of the following versions: `v2`, or `v3`.\n",
-              show_in_pr: true,
-              show_alert: true
-            }
-          )
+          expect(stub_dependency_change.notices)
+            .to include(warning_deprecation_notice)
+
           create_group_update_pull_request.perform
         end
       end

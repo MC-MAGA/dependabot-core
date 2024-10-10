@@ -1020,6 +1020,224 @@ public partial class UpdateWorkerTests
         }
 
         [Fact]
+        public async Task UpdateBindingRedirect_UnrelatedAssemblyReferenceWithMissingPublicKeyTokenAttribute()
+        {
+            await TestUpdateForProject("Some.Package", "7.0.1", "13.0.1",
+                packages:
+                [
+                    MockNuGetPackage.CreatePackageWithAssembly("Some.Package", "7.0.1", "net45", "7.0.0.0"),
+                    MockNuGetPackage.CreatePackageWithAssembly("Some.Package", "13.0.1", "net45", "13.0.0.0"),
+                ],
+                projectContents: """
+                    <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+                      <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+                      <PropertyGroup>
+                        <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+                      </PropertyGroup>
+                      <ItemGroup>
+                        <None Include="packages.config" />
+                      </ItemGroup>
+                      <ItemGroup>
+                        <None Include="app.config" />
+                      </ItemGroup>
+                      <ItemGroup>
+                        <Reference Include="Some.Package, Version=7.0.0.0, Culture=neutral, PublicKeyToken=null">
+                          <HintPath>packages\Some.Package.7.0.1\lib\net45\Some.Package.dll</HintPath>
+                          <Private>True</Private>
+                        </Reference>
+                        <Reference Include="Some.Unrelated.Package, Version=1.0.0.0, Culture=neutral">
+                          <HintPath>packages\Some.Unrelated.Package.1.0.0\lib\net45\Some.Unrelated.Package.dll</HintPath>
+                        </Reference>
+                      </ItemGroup>
+                      <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+                    </Project>
+                    """,
+                packagesConfigContents: """
+                    <packages>
+                      <package id="Some.Package" version="7.0.1" targetFramework="net45" />
+                    </packages>
+                    """,
+                additionalFiles:
+                [
+                    ("app.config", """
+                        <configuration>
+                          <runtime>
+                            <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+                              <dependentAssembly>
+                                <assemblyIdentity name="Some.Package" publicKeyToken="null" culture="neutral" />
+                                <bindingRedirect oldVersion="0.0.0.0-7.0.0.0" newVersion="7.0.0.0" />
+                              </dependentAssembly>
+                              <dependentAssembly>
+                                <assemblyIdentity name="Some.Unrelated.Package" culture="neutral" />
+                                <bindingRedirect oldVersion="0.0.0.0-1.0.0.0" newVersion="1.0.0.0" />
+                              </dependentAssembly>
+                            </assemblyBinding>
+                          </runtime>
+                        </configuration>
+                        """)
+                ],
+                expectedProjectContents: """
+                    <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+                      <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+                      <PropertyGroup>
+                        <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+                      </PropertyGroup>
+                      <ItemGroup>
+                        <None Include="packages.config" />
+                      </ItemGroup>
+                      <ItemGroup>
+                        <None Include="app.config" />
+                      </ItemGroup>
+                      <ItemGroup>
+                        <Reference Include="Some.Package, Version=13.0.0.0, Culture=neutral, PublicKeyToken=null">
+                          <HintPath>packages\Some.Package.13.0.1\lib\net45\Some.Package.dll</HintPath>
+                          <Private>True</Private>
+                        </Reference>
+                        <Reference Include="Some.Unrelated.Package, Version=1.0.0.0, Culture=neutral">
+                          <HintPath>packages\Some.Unrelated.Package.1.0.0\lib\net45\Some.Unrelated.Package.dll</HintPath>
+                        </Reference>
+                      </ItemGroup>
+                      <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+                    </Project>
+                    """,
+                expectedPackagesConfigContents: """
+                    <?xml version="1.0" encoding="utf-8"?>
+                    <packages>
+                      <package id="Some.Package" version="13.0.1" targetFramework="net45" />
+                    </packages>
+                    """,
+                additionalFilesExpected:
+                [
+                    ("app.config", """
+                        <configuration>
+                          <runtime>
+                            <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+                              <dependentAssembly>
+                                <assemblyIdentity name="Some.Package" publicKeyToken="null" culture="neutral" />
+                                <bindingRedirect oldVersion="0.0.0.0-13.0.0.0" newVersion="13.0.0.0" />
+                              </dependentAssembly>
+                              <dependentAssembly>
+                                <assemblyIdentity name="Some.Unrelated.Package" culture="neutral" />
+                                <bindingRedirect oldVersion="0.0.0.0-1.0.0.0" newVersion="1.0.0.0" />
+                              </dependentAssembly>
+                            </assemblyBinding>
+                          </runtime>
+                        </configuration>
+                        """)
+                ]
+            );
+        }
+
+        [Fact]
+        public async Task UpdateBindingRedirect_UnrelatedAssemblyReferenceWithMissingCultureAttribute()
+        {
+            await TestUpdateForProject("Some.Package", "7.0.1", "13.0.1",
+                packages:
+                [
+                    MockNuGetPackage.CreatePackageWithAssembly("Some.Package", "7.0.1", "net45", "7.0.0.0"),
+                    MockNuGetPackage.CreatePackageWithAssembly("Some.Package", "13.0.1", "net45", "13.0.0.0"),
+                ],
+                projectContents: """
+                    <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+                      <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+                      <PropertyGroup>
+                        <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+                      </PropertyGroup>
+                      <ItemGroup>
+                        <None Include="packages.config" />
+                      </ItemGroup>
+                      <ItemGroup>
+                        <None Include="app.config" />
+                      </ItemGroup>
+                      <ItemGroup>
+                        <Reference Include="Some.Package, Version=7.0.0.0, Culture=neutral, PublicKeyToken=null">
+                          <HintPath>packages\Some.Package.7.0.1\lib\net45\Some.Package.dll</HintPath>
+                          <Private>True</Private>
+                        </Reference>
+                        <Reference Include="Some.Unrelated.Package, Version=1.0.0.0, PublicKeyToken=null">
+                          <HintPath>packages\Some.Unrelated.Package.1.0.0\lib\net45\Some.Unrelated.Package.dll</HintPath>
+                        </Reference>
+                      </ItemGroup>
+                      <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+                    </Project>
+                    """,
+                packagesConfigContents: """
+                    <packages>
+                      <package id="Some.Package" version="7.0.1" targetFramework="net45" />
+                    </packages>
+                    """,
+                additionalFiles:
+                [
+                    ("app.config", """
+                        <configuration>
+                          <runtime>
+                            <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+                              <dependentAssembly>
+                                <assemblyIdentity name="Some.Package" publicKeyToken="null" culture="neutral" />
+                                <bindingRedirect oldVersion="0.0.0.0-7.0.0.0" newVersion="7.0.0.0" />
+                              </dependentAssembly>
+                              <dependentAssembly>
+                                <assemblyIdentity name="Some.Unrelated.Package" publicKeyToken="null" />
+                                <bindingRedirect oldVersion="0.0.0.0-1.0.0.0" newVersion="1.0.0.0" />
+                              </dependentAssembly>
+                            </assemblyBinding>
+                          </runtime>
+                        </configuration>
+                        """)
+                ],
+                expectedProjectContents: """
+                    <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+                      <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+                      <PropertyGroup>
+                        <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+                      </PropertyGroup>
+                      <ItemGroup>
+                        <None Include="packages.config" />
+                      </ItemGroup>
+                      <ItemGroup>
+                        <None Include="app.config" />
+                      </ItemGroup>
+                      <ItemGroup>
+                        <Reference Include="Some.Package, Version=13.0.0.0, Culture=neutral, PublicKeyToken=null">
+                          <HintPath>packages\Some.Package.13.0.1\lib\net45\Some.Package.dll</HintPath>
+                          <Private>True</Private>
+                        </Reference>
+                        <Reference Include="Some.Unrelated.Package, Version=1.0.0.0, PublicKeyToken=null">
+                          <HintPath>packages\Some.Unrelated.Package.1.0.0\lib\net45\Some.Unrelated.Package.dll</HintPath>
+                        </Reference>
+                      </ItemGroup>
+                      <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+                    </Project>
+                    """,
+                expectedPackagesConfigContents: """
+                    <?xml version="1.0" encoding="utf-8"?>
+                    <packages>
+                      <package id="Some.Package" version="13.0.1" targetFramework="net45" />
+                    </packages>
+                    """,
+                additionalFilesExpected:
+                [
+                    ("app.config", """
+                        <configuration>
+                          <runtime>
+                            <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+                              <dependentAssembly>
+                                <assemblyIdentity name="Some.Package" publicKeyToken="null" culture="neutral" />
+                                <bindingRedirect oldVersion="0.0.0.0-13.0.0.0" newVersion="13.0.0.0" />
+                              </dependentAssembly>
+                              <dependentAssembly>
+                                <assemblyIdentity name="Some.Unrelated.Package" publicKeyToken="null" />
+                                <bindingRedirect oldVersion="0.0.0.0-1.0.0.0" newVersion="1.0.0.0" />
+                              </dependentAssembly>
+                            </assemblyBinding>
+                          </runtime>
+                        </configuration>
+                        """)
+                ]
+            );
+        }
+
+        [Fact]
         public async Task UpdateBindingRedirect_DuplicateRedirectsForTheSameAssemblyAreRemoved()
         {
             await TestUpdateForProject("Some.Package", "7.0.1", "13.0.1",
@@ -1888,7 +2106,7 @@ public partial class UpdateWorkerTests
             var resultContents = await File.ReadAllTextAsync(resultOutputPath);
             var result = JsonSerializer.Deserialize<UpdateOperationResult>(resultContents, UpdaterWorker.SerializerOptions)!;
             Assert.Equal(ErrorType.MissingFile, result.ErrorType);
-            Assert.Equal(Path.Combine(temporaryDirectory.DirectoryPath, "this.file.does.not.exist.targets"), result.ErrorDetails);
+            Assert.Equal(Path.Combine(temporaryDirectory.DirectoryPath, "this.file.does.not.exist.targets"), result.ErrorDetails.ToString());
         }
 
         [Fact]
@@ -1968,6 +2186,84 @@ public partial class UpdateWorkerTests
                 {
                     ErrorType = ErrorType.AuthenticationFailure,
                     ErrorDetails = $"({http.BaseUrl.TrimEnd('/')}/index.json)",
+                }
+            );
+        }
+
+        [Fact]
+        public async Task MissingDependencyErrorIsReported()
+        {
+            // trying to update Some.Package from 1.0.1 to 1.0.2, but another package isn't available; update fails
+            await TestUpdateForProject("Some.Package", "1.0.1", "1.0.2",
+                packages:
+                [
+                    MockNuGetPackage.CreateSimplePackage("Some.Package", "1.0.1", "net45"),
+                    MockNuGetPackage.CreateSimplePackage("Some.Package", "1.0.2", "net45"),
+
+                    // the package `Unrelated.Package/1.0.0` is missing and will cause the update to fail
+                ],
+                // existing
+                projectContents: """
+                    <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+                      <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+                      <PropertyGroup>
+                        <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+                      </PropertyGroup>
+                      <ItemGroup>
+                        <None Include="packages.config" />
+                      </ItemGroup>
+                      <ItemGroup>
+                        <Reference Include="Some.Package, Version=1.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed">
+                          <HintPath>packages\Some.Package.1.0.1\lib\net45\Some.Package.dll</HintPath>
+                          <Private>True</Private>
+                        </Reference>
+                        <Reference Include="Unrelated.Package, Version=1.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed">
+                          <HintPath>packages\Unrelated.Package.1.0.0\lib\net45\Unrelated.Package.dll</HintPath>
+                          <Private>True</Private>
+                        </Reference>
+                      </ItemGroup>
+                      <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+                    </Project>
+                    """,
+                packagesConfigContents: """
+                    <packages>
+                      <package id="Some.Package" version="1.0.1" targetFramework="net45" />
+                      <package id="Unrelated.Package" version="1.0.0" targetFramework="net45" />
+                    </packages>
+                    """,
+                // expected
+                expectedProjectContents: """
+                    <Project ToolsVersion="15.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+                      <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+                      <PropertyGroup>
+                        <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+                      </PropertyGroup>
+                      <ItemGroup>
+                        <None Include="packages.config" />
+                      </ItemGroup>
+                      <ItemGroup>
+                        <Reference Include="Some.Package, Version=1.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed">
+                          <HintPath>packages\Some.Package.1.0.1\lib\net45\Some.Package.dll</HintPath>
+                          <Private>True</Private>
+                        </Reference>
+                        <Reference Include="Unrelated.Package, Version=1.0.0.0, Culture=neutral, PublicKeyToken=30ad4fe6b2a6aeed">
+                          <HintPath>packages\Unrelated.Package.1.0.0\lib\net45\Unrelated.Package.dll</HintPath>
+                          <Private>True</Private>
+                        </Reference>
+                      </ItemGroup>
+                      <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+                    </Project>
+                    """,
+                expectedPackagesConfigContents: """
+                    <packages>
+                      <package id="Some.Package" version="1.0.1" targetFramework="net45" />
+                      <package id="Unrelated.Package" version="1.0.0" targetFramework="net45" />
+                    </packages>
+                    """,
+                expectedResult: new()
+                {
+                    ErrorType = ErrorType.UpdateNotPossible,
+                    ErrorDetails = new[] { "Unrelated.Package.1.0.0" },
                 }
             );
         }

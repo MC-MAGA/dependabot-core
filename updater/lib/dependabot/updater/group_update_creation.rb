@@ -24,6 +24,7 @@ module Dependabot
     module GroupUpdateCreation
       extend T::Sig
       extend T::Helpers
+      include PullRequestHelpers
 
       abstract!
 
@@ -121,6 +122,10 @@ module Dependabot
           log_missing_previous_version(dependency_change)
           return nil
         end
+
+        # Send warning alerts to the API if any warning notices are present.
+        # Note that only notices with notice.show_alert set to true will be sent.
+        record_warning_notices(notices) if notices.any?
 
         dependency_change
       ensure
@@ -235,6 +240,9 @@ module Dependabot
           )
           return []
         end
+
+        # Raise an error if the package manager version is unsupported
+        dependency_snapshot.package_manager&.raise_if_unsupported!
 
         checker.updated_dependencies(
           requirements_to_unlock: requirements_to_unlock

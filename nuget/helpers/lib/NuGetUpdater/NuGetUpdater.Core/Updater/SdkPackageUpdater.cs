@@ -231,7 +231,7 @@ internal static class SdkPackageUpdater
             logger.Log($"    Adding [{dependencyName}/{newDependencyVersion}] as a top-level package reference.");
 
             // see https://learn.microsoft.com/nuget/consume-packages/install-use-packages-dotnet-cli
-            var (exitCode, stdout, stderr) = await ProcessEx.RunAsync("dotnet", $"add {projectPath} package {dependencyName} --version {newDependencyVersion}", workingDirectory: projectDirectory);
+            var (exitCode, stdout, stderr) = await ProcessEx.RunAsync("dotnet", ["add", projectPath, "package", dependencyName, "--version", newDependencyVersion], workingDirectory: projectDirectory);
             MSBuildHelper.ThrowOnUnauthenticatedFeed(stdout);
             if (exitCode != 0)
             {
@@ -350,7 +350,7 @@ internal static class SdkPackageUpdater
                 var specificResolvedDependency = resolvedDependencies.Where(d => d.Name.Equals(dependencyName, StringComparison.OrdinalIgnoreCase)).FirstOrDefault();
                 if (specificResolvedDependency is null)
                 {
-                    logger.Log($"    Unable resolve requested dependency for {dependencyName} in {projectFile.Path}.");
+                    logger.Log($"    Unable to resolve requested dependency for {dependencyName} in {projectFile.Path}.");
                     continue;
                 }
 
